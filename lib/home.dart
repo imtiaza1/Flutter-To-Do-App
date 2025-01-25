@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:random_string/random_string.dart';
 import 'dbService.dart';
@@ -10,9 +11,69 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool personal = true, office = false, college = false;
+  bool Personal = true, Office = false, College = false;
   bool suggest = false;
   TextEditingController todoController = TextEditingController();
+  Stream?toDoTask;
+
+  getOnTheLoad() async {
+    toDoTask = await DataBaseService().getTask(Personal
+        ? "Personal"
+        : Office
+            ? "Office"
+            : "College");
+    setState(() {});
+  }
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
+
+
+  Widget getWork() {
+    return StreamBuilder(
+      stream: toDoTask,
+      builder: (context, AsyncSnapshot snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator()); // Show a loader while waiting for data
+        }
+        if (!snapshot.hasData || snapshot.data.docs.isEmpty) {
+          return Center(child: Text("No Data Found")); // Show a message if no data is available
+        }
+        return ListView.builder(
+          shrinkWrap: true, // Ensures ListView takes only the required space
+          physics: NeverScrollableScrollPhysics(), // Disables scrolling to avoid conflict with parent scrolling
+          itemCount: snapshot.data.docs.length,
+          itemBuilder: (context, index) {
+            DocumentSnapshot data = snapshot.data.docs[index];
+            print(data["work"]);
+            return CheckboxListTile(
+              activeColor: Colors.green.shade400,
+              title: Text(data["work"]),
+              value: data["Yes"],
+              onChanged: (newValue){
+                Future.delayed(Duration(seconds: 5),(){
+                  DataBaseService().DeleteTask(data["id"], Personal?"Personal":Office?"Office":"College");
+                });
+                setState(() async{
+                  await DataBaseService().TicMethod(
+                      data["id"], Personal
+                      ? "Personal"
+                      : Office
+                      ? "Office"
+                      : "College");
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,136 +95,124 @@ class _HomePageState extends State<HomePage> {
       ),
       body: SingleChildScrollView(
         child: Column(
+          mainAxisSize: MainAxisSize.min, // Add this line to resolve the issue
           children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  personal
+                  Personal
                       ? Material(
-                          elevation: 5,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.greenAccent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "Personal",
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            personal = true;
-                            office = false;
-                            college = false;
-                            setState(() {});
-                          },
-                          child: Text(
-                            "Personal",
-                            style: TextStyle(fontSize: 20),
-                          )),
-                  college
-                      ? Material(
-                          elevation: 5,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.greenAccent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "College",
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            personal = false;
-                            office = false;
-                            college = true;
-                            setState(() {});
-                          },
-                          child: Text(
-                            "College",
-                            style: TextStyle(fontSize: 20),
-                          )),
-                  office
-                      ? Material(
-                          elevation: 5,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.greenAccent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "Office",
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            personal = false;
-                            office = true;
-                            college = false;
-                            setState(() {});
-                          },
-                          child: Text(
-                            "Office",
-                            style: TextStyle(fontSize: 20),
-                          ),
+                    elevation: 5,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Personal",
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                  )
+                      : GestureDetector(
+                      onTap: () async {
+                        Personal = true;
+                        Office = false;
+                        College = false;
+                        await getOnTheLoad();
+                        setState(() {});
+                      },
+                      child: Text(
+                        "Personal",
+                        style: TextStyle(fontSize: 20),
+                      )),
+                  College
+                      ? Material(
+                    elevation: 5,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "College",
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                      : GestureDetector(
+                      onTap: () async {
+                        Personal = false;
+                        Office = false;
+                        College = true;
+                        await getOnTheLoad();
+                        setState(() {});
+                      },
+                      child: Text(
+                        "College",
+                        style: TextStyle(fontSize: 20),
+                      )),
+                  Office
+                      ? Material(
+                    elevation: 5,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Office",
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                      : GestureDetector(
+                      onTap: () async {
+                        Personal = false;
+                        Office = true;
+                        College = false;
+                        await getOnTheLoad();
+                        setState(() {});
+                      },
+                      child: Text(
+                        "Office",
+                        style: TextStyle(fontSize: 20),
+                      )),
                 ],
               ),
             ),
             SizedBox(
               height: 30,
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: CheckboxListTile(
-                activeColor: Colors.green.shade400,
-                title: Text("Do it Today"),
-                value: suggest,
-                onChanged: (newvalue) {
-                  setState(() {
-                    suggest = newvalue!;
-                  });
-                },
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            )
+            getWork(), // Ensure this widget does not use Expanded or Flexible
           ],
         ),
       ),
+
     );
   }
 
-  openBox() {
+  Future openBox() {
     return showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -241,12 +290,13 @@ class _HomePageState extends State<HomePage> {
                     child: ElevatedButton(
                         onPressed: () {
                           String id = randomAlphaNumeric(10);
-                          String Task=todoController.text.toString();
-                          Map<String,dynamic>userTodo={
-                            "work":Task,
-                            "id":id
+                          String Task = todoController.text.toString();
+                          Map<String, dynamic> userTodo = {
+                            "work": Task,
+                            "id": id,
+                            "Yes":false,
                           };
-                          if(todoController.text.trim().isEmpty){
+                          if (todoController.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
@@ -254,14 +304,13 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black
-                                  ),
+                                      color: Colors.black),
                                 ),
                                 backgroundColor: Colors.redAccent.shade400,
                               ),
                             );
-                          }else{
-                            if(personal){
+                          } else {
+                            if (Personal) {
                               DataBaseService().addPersonalTask(userTodo, id);
                               Navigator.pop(context);
                               todoController.clear();
@@ -272,13 +321,12 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black
-                                    ),
+                                        color: Colors.black),
                                   ),
                                   backgroundColor: Colors.green.shade400,
                                 ),
                               );
-                            }else if(college){
+                            } else if (College) {
                               DataBaseService().addCollegTask(userTodo, id);
                               Navigator.pop(context);
                               todoController.clear();
@@ -289,13 +337,12 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black
-                                    ),
+                                        color: Colors.black),
                                   ),
                                   backgroundColor: Colors.green.shade400,
                                 ),
                               );
-                            }else{
+                            } else {
                               DataBaseService().addOfficeTask(userTodo, id);
                               Navigator.pop(context);
                               todoController.clear();
@@ -306,8 +353,7 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black
-                                    ),
+                                        color: Colors.black),
                                   ),
                                   backgroundColor: Colors.green.shade400,
                                 ),
